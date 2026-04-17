@@ -1,6 +1,8 @@
 % Tokyo Ramen Expert System KB
 
 :- use_module(library(lists)).
+
+
 :- dynamic known/2.
 :- dynamic shop/1.
 :- dynamic area/2.
@@ -14,8 +16,9 @@
 :- dynamic seating/2.          % seating(Shop, bar|table|both)
 :- dynamic group_ok/2.         % group_ok(Shop, solo|small|group)
 :- dynamic wait_level/2.       % wait_level(Shop, short|medium|long)
-:- dynamic travel_band/2.      % travel_band(Shop, near|mid|far)
-
+:- dynamic travel_band/2.      % travel_band(Shop, near|mid|far):- dynamic ramen_type/2.       % ramen_type(Shop, ramen|tsukemen|both)
+:- dynamic jiro_style/2.       % jiro_style(Shop, yes|no)
+:- dynamic payment/2.          % payment(Shop, cash_only|card_ok)
 % ASKABLES
 % Each predicate below prompts the user for one preference via menuask/3.
 % They bind X to the user's chosen value (not a yes/no flag).
@@ -28,8 +31,11 @@ diet_req(X)      :- menuask(diet_req, X, [none, vegetarian, halal]).
 distance_tol(X)  :- menuask(distance_tol, X, [near, mid, any]).
 wait_tol(X)      :- menuask(wait_tol, X, [short, medium, any]).
 group_size(X)    :- menuask(group_size, X, [solo, small, group]).
-open_late_req(X) :- menuask(open_late_req, X, [yes, no]).
-seating_pref(X)  :- menuask(seating_pref, X, [bar, table, no_pref]).
+open_late_req(X)    :- menuask(open_late_req, X, [yes, no]).
+seating_pref(X)    :- menuask(seating_pref, X, [bar, table, no_pref]).
+ramen_type_pref(X) :- menuask(ramen_type_pref, X, [ramen, tsukemen, either]).
+hunger_level(X)    :- menuask(hunger_level, X, [jiro, regular]).
+payment_pref(X)    :- menuask(payment_pref, X, [card_ok, no_pref]).
 
 
 % MENUASK/3  —  memoised user-input predicate
@@ -91,7 +97,10 @@ recommend(Shop) :-
     matches_distance(Shop),
     matches_wait(Shop),
     matches_group(Shop),
-    matches_seating(Shop).
+    matches_seating(Shop),
+    matches_ramen_type(Shop),
+    matches_hunger(Shop),
+    matches_payment(Shop).
 
 % matches_diet(Shop)
 %   No dietary restriction: any shop passes.
@@ -220,3 +229,38 @@ matches_seating(Shop) :-
 matches_seating(Shop) :-
     seating_pref(table),
     (seating(Shop, table) ; seating(Shop, both)).
+
+% matches_ramen_type(Shop)
+%   either   : user is happy with ramen or tsukemen, skip check.
+%   ramen    : shop must serve regular ramen or both styles.
+%   tsukemen : shop must serve tsukemen or both styles.
+matches_ramen_type(Shop) :-
+    ramen_type_pref(either),
+    !.
+matches_ramen_type(Shop) :-
+    ramen_type_pref(ramen),
+    (ramen_type(Shop, ramen) ; ramen_type(Shop, both)),
+    !.
+matches_ramen_type(Shop) :-
+    ramen_type_pref(tsukemen),
+    (ramen_type(Shop, tsukemen) ; ramen_type(Shop, both)).
+
+% matches_hunger(Shop)
+%   regular  : user wants a normal portion; any shop passes.
+%   jiro     : user wants a jiro-style mega portion; shop must offer it.
+matches_hunger(Shop) :-
+    hunger_level(regular),
+    !.
+matches_hunger(Shop) :-
+    hunger_level(jiro),
+    jiro_style(Shop, yes).
+
+% matches_payment(Shop)
+%   no_pref  : user is fine paying cash; any shop passes.
+%   card_ok  : user needs to pay by card; shop must accept cards.
+matches_payment(Shop) :-
+    payment_pref(no_pref),
+    !.
+matches_payment(Shop) :-
+    payment_pref(card_ok),
+    payment(Shop, card_ok).

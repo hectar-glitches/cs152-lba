@@ -87,8 +87,54 @@ def load_csv():
             assert_fact("group_ok", shop_id, atomize(row["group_ok"]))
             assert_fact("wait_level", shop_id, atomize(row["wait_level"]))
             assert_fact("travel_band", shop_id, atomize(row["travel_band"]))
+            assert_fact("ramen_type", shop_id, atomize(row["ramen_type"]))
+            assert_fact("jiro_style", shop_id, atomize(row["jiro_style"]))
+            assert_fact("payment", shop_id, atomize(row["payment"]))
 
 load_csv()
+
+# --- Build a human-readable explanation for a recommended shop ---
+def explain_shop(shop_id):
+    """
+    Query each attribute of shop_id from Prolog and return a single
+    sentence explaining why the shop was recommended.
+    """
+    def query_val(pred, var="X"):
+        ans = list(prolog.query(f"{pred}({shop_id},{var}).", maxresult=1))
+        return str(ans[0][var]) if ans else None
+
+    area      = query_val("area")
+    station   = query_val("station")
+    budget    = query_val("price_level")
+    broth     = query_val("broth")
+    richness  = query_val("richness")
+    spice     = query_val("spice")
+    open_late = query_val("open_late")
+    wait      = query_val("wait_level")
+    seating   = query_val("seating")
+    rtype     = query_val("ramen_type")
+    jiro      = query_val("jiro_style")
+    payment   = query_val("payment")
+
+    parts = []
+    if broth:     parts.append(f"{broth} broth")
+    if richness:  parts.append(f"{richness} richness")
+    if spice and spice != "none": parts.append(f"{spice} spice")
+    if spice == "none":            parts.append("no spice")
+    if rtype:     parts.append(f"{rtype}")
+    if jiro == "yes": parts.append("jiro-style portions")
+    if jiro == "no":  parts.append("regular portions")
+    if budget:    parts.append(f"{budget} budget")
+    if payment:   parts.append(f"payment: {payment.replace('_', ' ')}")
+    if open_late == "yes": parts.append("open late")
+    if wait:      parts.append(f"{wait} wait")
+    if seating:   parts.append(f"{seating} seating")
+    if station:   parts.append(f"near {station.replace('_', ' ')} station")
+    if area:      parts.append(f"in {area.replace('_', ' ')}")
+
+    detail = ", ".join(parts) if parts else "matches your preferences"
+    return f"Recommended {shop_id.replace('_', ' ')} because: {detail}."
+
 
 # --- Run one consultation ---
 def run_once():
@@ -104,25 +150,7 @@ def run_once():
     print("\nTop matches:")
     for s in shops[:3]:
         print(" -", s)
-
-    # Optional: show details for first recommendation
-    if shops:
-        s = shops[0]
-        print("\nDetails for:", s)
-        for q in [
-            f"area({s},A).",
-            f"station({s},St).",
-            f"price_level({s},P).",
-            f"broth({s},B).",
-            f"richness({s},R).",
-            f"open_late({s},OL).",
-            f"wait_level({s},W).",
-            f"seating({s},S)."
-        ]:
-            ans = list(prolog.query(q, maxresult=1))
-            if ans:
-                # print first variable value found
-                print(" ", q.split("(")[0], "=", list(ans[0].values())[0])
+        print(" ", explain_shop(s))
 
 if __name__ == "__main__":
     print("Tokyo Ramen Expert System")
