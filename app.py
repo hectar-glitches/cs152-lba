@@ -1,9 +1,59 @@
-import os, csv
+import os, csv, math
 from pyswip.prolog import Prolog
 from pyswip.easy import Atom, Variable, registerForeign
 
 KB_FILE = "ramen_kb.pl"
 CSV_FILE = os.path.join("data", "ramen_shops.csv")
+
+# Base location: Grand Prince Hotel Shinagawa, Tokyo.
+_BASE_LAT = 35.6285
+_BASE_LON = 139.7391
+
+
+def _haversine_km(lat1: float, lon1: float, lat2: float, lon2: float) -> float:
+    """Return the great-circle distance in kilometres between two points.
+
+    Args:
+        lat1: Latitude of point 1 in decimal degrees.
+        lon1: Longitude of point 1 in decimal degrees.
+        lat2: Latitude of point 2 in decimal degrees.
+        lon2: Longitude of point 2 in decimal degrees.
+
+    Returns:
+        Distance in kilometres.
+    """
+    R = 6371.0
+    dlat = math.radians(lat2 - lat1)
+    dlon = math.radians(lon2 - lon1)
+    a = (math.sin(dlat / 2) ** 2
+         + math.cos(math.radians(lat1))
+         * math.cos(math.radians(lat2))
+         * math.sin(dlon / 2) ** 2)
+    return R * 2 * math.asin(math.sqrt(a))
+
+
+def _travel_band(lat: float, lon: float) -> str:
+    """Return the travel band for a shop relative to the base location.
+
+    Bands are computed from straight-line distance using Haversine:
+        near : ≤ 3 km   (walkable or very short journey)
+        mid  : ≤ 7 km   (short train ride)
+        far  : > 7 km   (longer journey)
+
+    Args:
+        lat: Shop latitude in decimal degrees.
+        lon: Shop longitude in decimal degrees.
+
+    Returns:
+        One of 'near', 'mid', or 'far'.
+    """
+    km = _haversine_km(_BASE_LAT, _BASE_LON, lat, lon)
+    if km <= 3.0:
+        return "near"
+    if km <= 7.0:
+        return "mid"
+    return "far"
+
 
 prolog = Prolog()
 
@@ -156,7 +206,11 @@ def load_csv():
             assert_fact("seating", shop_id, atomize(row["seating"]))
             assert_fact("group_ok", shop_id, atomize(row["group_ok"]))
             assert_fact("wait_level", shop_id, atomize(row["wait_level"]))
-            assert_fact("travel_band", shop_id, atomize(row["travel_band"]))
+            try:
+                band = _travel_band(float(row["latitude"]), float(row["longitude"]))
+            except (KeyError, ValueError):
+                band = atomize(row.get("travel_band", "far"))
+            assert_fact("travel_band", shop_id, band)
             assert_fact("ramen_type", shop_id, atomize(row["ramen_type"]))
             assert_fact("jiro_style", shop_id, atomize(row["jiro_style"]))
             assert_fact("payment", shop_id, atomize(row["payment"]))
