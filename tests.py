@@ -1,15 +1,7 @@
 import unittest
 from app import prolog, atomize, explain_shop
 
-
-# Helpers
-
-
-ALL_ASKABLES = [
-    "budget", "broth_pref", "rich_pref", "spice_tol",
-    "diet_req", "distance_tol", "wait_tol", "group_size",
-    "open_late_req", "seating_pref",
-]
+# Shared test data
 
 SHOP_PREDICATES = [
     "shop", "area", "station", "price_level", "broth", "richness",
@@ -49,6 +41,7 @@ def add_test_shop(shop_id, price_level="medium", broth="shoyu",
 
 
 def get_recommendations():
+    """Run all_recommendations/1 in Prolog and return matching shop IDs as a list of strings."""
     results = list(prolog.query("all_recommendations(L).", maxresult=1))
     if not results:
         return []
@@ -127,7 +120,7 @@ class TestRecommendations(unittest.TestCase):
         defaults.update(overrides)
         return defaults
 
-    # --- Budget ---
+    # Budget tests.
 
     def test_matching_budget_recommends_shop(self):
         """A shop whose price level matches the user's budget should be recommended."""
@@ -141,7 +134,7 @@ class TestRecommendations(unittest.TestCase):
         set_known(**self._default_prefs(budget="low"))
         self.assertNotIn("test_shop", get_recommendations())
 
-    # --- Broth ---
+    # Broth tests.
 
     def test_no_broth_pref_accepts_any_broth(self):
         """With no broth preference, a shop with any broth type should be recommended."""
@@ -161,7 +154,7 @@ class TestRecommendations(unittest.TestCase):
         set_known(**self._default_prefs(broth_pref="shoyu"))
         self.assertNotIn("test_shop", get_recommendations())
 
-    # --- Spice ---
+    # Spice tests.
 
     def test_spicy_tolerance_accepts_any_spice(self):
         """A user who tolerates spicy food should be matched with a spicy shop."""
@@ -193,7 +186,7 @@ class TestRecommendations(unittest.TestCase):
         set_known(**self._default_prefs(spice_tol="none"))
         self.assertNotIn("test_shop", get_recommendations())
 
-    # --- Diet ---
+    # Diet tests.
 
     def test_no_diet_req_accepts_any_shop(self):
         """A user with no dietary restrictions should be matched with any shop."""
@@ -231,7 +224,7 @@ class TestRecommendations(unittest.TestCase):
         set_known(**self._default_prefs(diet_req="halal"))
         self.assertNotIn("test_shop", get_recommendations())
 
-    # --- Open late ---
+    # Open late tests.
 
     def test_late_req_accepts_open_late_shop(self):
         """A user who needs late-night dining should be matched with a shop open after 10pm."""
@@ -251,7 +244,7 @@ class TestRecommendations(unittest.TestCase):
         set_known(**self._default_prefs(open_late_req="no"))
         self.assertIn("test_shop", get_recommendations())
 
-    # --- Distance ---
+    # Distance tests.
 
     def test_any_distance_accepts_far_shop(self):
         """A user willing to travel any distance should be matched with even a far shop."""
@@ -277,7 +270,7 @@ class TestRecommendations(unittest.TestCase):
         set_known(**self._default_prefs(distance_tol="near"))
         self.assertNotIn("test_shop", get_recommendations())
 
-    # --- Wait time ---
+    # Wait time tests.
 
     def test_any_wait_accepts_long_wait(self):
         """A user tolerant of any wait time should be matched with a shop with a long queue."""
@@ -297,7 +290,7 @@ class TestRecommendations(unittest.TestCase):
         set_known(**self._default_prefs(wait_tol="medium"))
         self.assertIn("test_shop", get_recommendations())
 
-    # --- Group size ---
+    # Group size tests.
 
     def test_solo_accepted_everywhere(self):
         """A solo diner should be matched with any shop regardless of group policy."""
@@ -317,7 +310,7 @@ class TestRecommendations(unittest.TestCase):
         set_known(**self._default_prefs(group_size="group"))
         self.assertNotIn("test_shop", get_recommendations())
 
-    # --- Seating ---
+    # Seating tests.
 
     def test_no_seating_pref_accepts_any_seating(self):
         """A user with no seating preference should be matched with any seating type."""
@@ -337,7 +330,7 @@ class TestRecommendations(unittest.TestCase):
         set_known(**self._default_prefs(seating_pref="table"))
         self.assertNotIn("test_shop", get_recommendations())
 
-    # --- Ramen type ---
+    # Ramen type tests.
 
     def test_either_ramen_type_accepts_any(self):
         """A user happy with either ramen or tsukemen should be matched with any shop."""
@@ -369,7 +362,7 @@ class TestRecommendations(unittest.TestCase):
         set_known(**self._default_prefs(ramen_type_pref="ramen"))
         self.assertNotIn("test_shop", get_recommendations())
 
-    # --- Hunger level (jiro style) ---
+    # Hunger level tests.
 
     def test_regular_hunger_accepts_any_shop(self):
         """A user with a regular appetite should be matched with any shop."""
@@ -389,7 +382,7 @@ class TestRecommendations(unittest.TestCase):
         set_known(**self._default_prefs(hunger_level="jiro"))
         self.assertNotIn("test_shop", get_recommendations())
 
-    # --- Payment preference ---
+    # Payment preference tests.
 
     def test_no_payment_pref_accepts_cash_only_shop(self):
         """A user with no payment preference should be matched with a cash-only shop."""
@@ -409,14 +402,14 @@ class TestRecommendations(unittest.TestCase):
         set_known(**self._default_prefs(payment_pref="card_ok"))
         self.assertNotIn("test_shop", get_recommendations())
 
-    # --- No matches ---
+    # No matches tests.
 
     def test_no_shops_returns_empty_list(self):
         """When no shops are loaded, all_recommendations should return an empty list."""
         set_known(**self._default_prefs())
         self.assertEqual(get_recommendations(), [])
 
-    # --- Multiple constraints together ---
+    # Multiple constraints tests.
 
     def test_combined_filters_all_must_pass(self):
         """A shop that passes some but not all filters should not be recommended."""
@@ -426,9 +419,8 @@ class TestRecommendations(unittest.TestCase):
         self.assertNotIn("test_shop", get_recommendations())
 
 
-# ---------------------------------------------------------------------------
+
 # Explanation output tests
-# ---------------------------------------------------------------------------
 
 class TestExplanation(unittest.TestCase):
 
