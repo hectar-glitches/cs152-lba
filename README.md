@@ -5,8 +5,14 @@ your preferences (broth, richness, spice, diet, distance, budget, etc.).
 
 ## Run
 
+**GUI (recommended):**
 ```bash
 pip install pyswip
+python gui.py
+```
+
+**Terminal mode:**
+```bash
 python app.py
 ```
 
