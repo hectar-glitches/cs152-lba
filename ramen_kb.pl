@@ -107,7 +107,7 @@ recommend(Shop) :-
 %   No dietary restriction: any shop passes.
 %   Vegetarian: accept shops marked vegetarian or veg_friendly.
 %   Halal: only shops explicitly marked halal pass.
-matches_diet(Shop) :-
+matches_diet(_) :-
     diet_req(none),
     !.
 matches_diet(Shop) :-
@@ -122,7 +122,7 @@ matches_diet(Shop) :-
 % matches_open_late(Shop)
 %   User doesn't need late hours: any shop passes.
 %   User needs late hours: shop must have open_late(Shop, yes).
-matches_open_late(Shop) :-
+matches_open_late(_) :-
     open_late_req(no),
     !.
 matches_open_late(Shop) :-
@@ -139,7 +139,7 @@ matches_budget(Shop) :-
 % matches_broth(Shop)
 %   no_pref: skip the broth check entirely.
 %   Otherwise, the shop's broth type must match the user's preference.
-matches_broth(Shop) :-
+matches_broth(_) :-
     broth_pref(no_pref),
     !.
 matches_broth(Shop) :-
@@ -149,7 +149,7 @@ matches_broth(Shop) :-
 % matches_richness(Shop)
 %   no_pref: skip the richness check.
 %   Otherwise, the shop's broth richness must match (light/medium/rich).
-matches_richness(Shop) :-
+matches_richness(_) :-
     rich_pref(no_pref),
     !.
 matches_richness(Shop) :-
@@ -160,7 +160,7 @@ matches_richness(Shop) :-
 %   spicy tolerance: any spice level is acceptable.
 %   mild tolerance : shop must be none or mild (not spicy).
 %   none tolerance : shop must have no spice at all.
-matches_spice(Shop) :-
+matches_spice(_) :-
     spice_tol(spicy),
     !.
 matches_spice(Shop) :-
@@ -175,7 +175,7 @@ matches_spice(Shop) :-
 %   any tolerance: distance doesn't matter, all shops pass.
 %   mid tolerance : shop must be near or mid distance.
 %   near only     : shop must be in the near travel band.
-matches_distance(Shop) :-
+matches_distance(_) :-
     distance_tol(any),
     !.
 matches_distance(Shop) :-
@@ -190,7 +190,7 @@ matches_distance(Shop) :-
 %   any tolerance : queue length doesn't matter, all shops pass.
 %   medium tolerance: shop's typical wait must be short or medium.
 %   short only    : shop must have a short wait (no long queues).
-matches_wait(Shop) :-
+matches_wait(_) :-
     wait_tol(any),
     !.
 matches_wait(Shop) :-
@@ -205,7 +205,7 @@ matches_wait(Shop) :-
 %   solo : a single diner is welcome everywhere, skip check.
 %   small: shop must accommodate small groups or larger groups.
 %   group: shop must explicitly support larger group seatings.
-matches_group(Shop) :-
+matches_group(_) :-
     group_size(solo),
     !.
 matches_group(Shop) :-
@@ -220,7 +220,7 @@ matches_group(Shop) :-
 %   no_pref: seating style doesn't matter, skip check.
 %   bar    : shop must have counter/bar seating or both types.
 %   table  : shop must have table seating or both types.
-matches_seating(Shop) :-
+matches_seating(_) :-
     seating_pref(no_pref),
     !.
 matches_seating(Shop) :-
@@ -235,7 +235,7 @@ matches_seating(Shop) :-
 %   either   : user is happy with ramen or tsukemen, skip check.
 %   ramen    : shop must serve regular ramen or both styles.
 %   tsukemen : shop must serve tsukemen or both styles.
-matches_ramen_type(Shop) :-
+matches_ramen_type(_) :-
     ramen_type_pref(either),
     !.
 matches_ramen_type(Shop) :-
@@ -249,7 +249,7 @@ matches_ramen_type(Shop) :-
 % matches_hunger(Shop)
 %   regular  : user wants a normal portion; any shop passes.
 %   jiro     : user wants a jiro-style mega portion; shop must offer it.
-matches_hunger(Shop) :-
+matches_hunger(_) :-
     hunger_level(regular),
     !.
 matches_hunger(Shop) :-
@@ -259,7 +259,7 @@ matches_hunger(Shop) :-
 % matches_payment(Shop)
 %   no_pref  : user is fine paying cash; any shop passes.
 %   card_ok  : user needs to pay by card; shop must accept cards.
-matches_payment(Shop) :-
+matches_payment(_) :-
     payment_pref(no_pref),
     !.
 matches_payment(Shop) :-
