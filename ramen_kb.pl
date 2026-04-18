@@ -1,6 +1,8 @@
 % Tokyo Ramen Expert System KB
 
 :- use_module(library(lists)).
+
+
 :- dynamic known/2.
 :- dynamic shop/1.
 :- dynamic area/2.
@@ -14,7 +16,9 @@
 :- dynamic seating/2.          % seating(Shop, bar|table|both)
 :- dynamic group_ok/2.         % group_ok(Shop, solo|small|group)
 :- dynamic wait_level/2.       % wait_level(Shop, short|medium|long)
-:- dynamic travel_band/2.      % travel_band(Shop, near|mid|far)
+:- dynamic travel_band/2.      % travel_band(Shop, near|mid|far):- dynamic ramen_type/2.       % ramen_type(Shop, ramen|tsukemen|both)
+:- dynamic jiro_style/2.       % jiro_style(Shop, yes|no)
+:- dynamic payment/2.          % payment(Shop, cash_only|card_ok)
 
 % ASKABLES
 % Each predicate below prompts the user for one preference via menuask/3.
@@ -28,15 +32,18 @@ diet_req(X)      :- menuask(diet_req, X, [none, vegetarian, halal]).
 distance_tol(X)  :- menuask(distance_tol, X, [near, mid, any]).
 wait_tol(X)      :- menuask(wait_tol, X, [short, medium, any]).
 group_size(X)    :- menuask(group_size, X, [solo, small, group]).
-open_late_req(X) :- menuask(open_late_req, X, [yes, no]).
-seating_pref(X)  :- menuask(seating_pref, X, [bar, table, no_pref]).
+open_late_req(X)    :- menuask(open_late_req, X, [yes, no]).
+seating_pref(X)    :- menuask(seating_pref, X, [bar, table, no_pref]).
+ramen_type_pref(X) :- menuask(ramen_type_pref, X, [ramen, tsukemen, either]).
+hunger_level(X)    :- menuask(hunger_level, X, [jiro, regular]).
+payment_pref(X)    :- menuask(payment_pref, X, [card_ok, no_pref]).
 
 
-% MENUASK/3  —  memoised user-input predicate
+% MENUASK/3: memoised user-input predicate
 %
 % menuask(Attribute, Value, Options)
 %   1. If the user already answered this question (known/2 fact exists),
-%      unify Value with the cached answer and cut — no re-prompting.
+%      unify Value with the cached answer and cut; no re-prompting.
 %   2. Otherwise, delegate to the Python foreign predicate read_menu_py/3
 %      which displays the numbered menu and reads the selection, then
 %      cache the result with assertz(known(Attribute, Value)) for future
@@ -54,15 +61,15 @@ menuask(A, V, Options) :-
 
 % ENTRY POINTS
 %
-% top_goal(Shop)  — succeeds (possibly on backtracking) for each Shop
-%                   that satisfies all user preferences.
+% top_goal(Shop): succeeds (possibly on backtracking) for each Shop
+%                 that satisfies all user preferences.
 %
-% solve(Shop)     — clears any cached answers from a previous run, then
-%                   invokes top_goal/1 so the user is asked fresh questions.
+% solve(Shop): clears any cached answers from a previous run, then
+%              invokes top_goal/1 so the user is asked fresh questions.
 %
-% all_recommendations(List) — collects every matching shop into List in
-%                   one shot using findall/3 (used by the Python front-end
-%                   to display the full result set).
+% all_recommendations(List): collects every matching shop into List in
+%                 one shot using findall/3 (used by the Python front-end
+%                 to display the full result set).
 
 top_goal(Shop) :- recommend(Shop).
 
@@ -91,7 +98,10 @@ recommend(Shop) :-
     matches_distance(Shop),
     matches_wait(Shop),
     matches_group(Shop),
-    matches_seating(Shop).
+    matches_seating(Shop),
+    matches_ramen_type(Shop),
+    matches_hunger(Shop),
+    matches_payment(Shop).
 
 % matches_diet(Shop)
 %   No dietary restriction: any shop passes.
@@ -121,7 +131,7 @@ matches_open_late(Shop) :-
 
 % matches_budget(Shop)
 %   Shop's price level must exactly match the user's budget choice
-%   (low / medium / high).  No tolerance range — strict equality.
+%   (low / medium / high).  No tolerance range; strict equality.
 matches_budget(Shop) :-
     budget(B),
     price_level(Shop, B).
@@ -220,3 +230,67 @@ matches_seating(Shop) :-
 matches_seating(Shop) :-
     seating_pref(table),
     (seating(Shop, table) ; seating(Shop, both)).
+
+% matches_ramen_type(Shop)
+%   either   : user is happy with ramen or tsukemen, skip check.
+%   ramen    : shop must serve regular ramen or both styles.
+%   tsukemen : shop must serve tsukemen or both styles.
+matches_ramen_type(Shop) :-
+    ramen_type_pref(either),
+    !.
+matches_ramen_type(Shop) :-
+    ramen_type_pref(ramen),
+    (ramen_type(Shop, ramen) ; ramen_type(Shop, both)),
+    !.
+matches_ramen_type(Shop) :-
+    ramen_type_pref(tsukemen),
+    (ramen_type(Shop, tsukemen) ; ramen_type(Shop, both)).
+
+% matches_hunger(Shop)
+%   regular  : user wants a normal portion; any shop passes.
+%   jiro     : user wants a jiro-style mega portion; shop must offer it.
+matches_hunger(Shop) :-
+    hunger_level(regular),
+    !.
+matches_hunger(Shop) :-
+    hunger_level(jiro),
+    jiro_style(Shop, yes).
+
+% matches_payment(Shop)
+%   no_pref  : user is fine paying cash; any shop passes.
+%   card_ok  : user needs to pay by card; shop must accept cards.
+matches_payment(Shop) :-
+    payment_pref(no_pref),
+    !.
+matches_payment(Shop) :-
+    payment_pref(card_ok),
+    payment(Shop, card_ok).
+
+% DCG RULES: Natural language question generation
+%
+% Each question//1 DCG rule maps an askable attribute to a single natural-
+% language question string.  Using DCG (-->) rather than plain facts keeps
+% the phrasing logic composable and easy to extend (e.g. adding context-
+% sensitive phrasing by chaining terminals or non-terminals).
+%
+% question_text/2 is the Python-facing helper: it resolves the DCG for a
+% given attribute and returns the question as a single atom.
+
+question(budget)          --> ['What is your budget for this meal?'].
+question(broth_pref)      --> ['What type of broth are you in the mood for?'].
+question(rich_pref)       --> ['How rich would you like the broth to be?'].
+question(spice_tol)       --> ['How much spice are you comfortable with?'].
+question(diet_req)        --> ['Do you have any dietary requirements?'].
+question(distance_tol)    --> ['How far are you willing to travel?'].
+question(wait_tol)        --> ['How long are you prepared to queue?'].
+question(group_size)      --> ['How many people are dining today?'].
+question(open_late_req)   --> ['Do you need somewhere open after 10pm?'].
+question(seating_pref)    --> ['Do you have a seating preference?'].
+question(ramen_type_pref) --> ['Are you in the mood for ramen or tsukemen?'].
+question(hunger_level)    --> ['How hungry are you feeling today?'].
+question(payment_pref)    --> ['How would you prefer to pay?'].
+
+% question_text(+Attr, -Text)
+% Resolves the DCG question for Attr into a single string atom.
+question_text(Attr, Text) :-
+    phrase(question(Attr), [Text]).
